@@ -6,6 +6,8 @@ A simple shared Meteor app with three pages:
 - Grocery List
 - Wishlist
 
+
+
 ## Requirements
 
 - Meteor installed
