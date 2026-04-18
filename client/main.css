@@ -1,0 +1,242 @@
+:root {
+  --bg: #f4f7fb;
+  --card: #ffffff;
+  --border: #d8e0ea;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-soft: #dbeafe;
+  --danger: #dc2626;
+  --success: #15803d;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+button, input, textarea, select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+.app-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.title-wrap h1 {
+  margin: 0 0 4px;
+  font-size: 2rem;
+}
+.title-wrap p {
+  margin: 0;
+  color: var(--muted);
+}
+.nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.nav button {
+  border: 1px solid var(--border);
+  background: white;
+  padding: 10px 14px;
+  border-radius: 999px;
+}
+.nav button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+.grid {
+  display: grid;
+  gap: 18px;
+}
+.calendar-layout {
+  grid-template-columns: 1.6fr 1fr;
+}
+@media (max-width: 900px) {
+  .calendar-layout { grid-template-columns: 1fr; }
+}
+.calendar-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.calendar-topbar h2,
+.card h2,
+.card h3 {
+  margin-top: 0;
+}
+.month-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.month-controls button,
+.primary-btn,
+.secondary-btn,
+.danger-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: white;
+}
+.primary-btn {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.secondary-btn {
+  background: #fff;
+}
+.danger-btn {
+  color: var(--danger);
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+.day-name,
+.day-cell {
+  min-height: 110px;
+}
+.day-name {
+  background: transparent;
+  color: var(--muted);
+  font-weight: bold;
+  padding: 8px;
+  text-align: center;
+}
+.day-cell {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: white;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.day-cell.outside {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+.day-cell.selected {
+  outline: 2px solid var(--accent);
+  background: #f8fbff;
+}
+.day-number {
+  font-weight: bold;
+}
+.day-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.badge {
+  background: var(--accent-soft);
+  color: #1d4ed8;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.form-grid {
+  display: grid;
+  gap: 10px;
+}
+.form-grid label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+input, textarea, select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: white;
+}
+textarea { min-height: 90px; resize: vertical; }
+.form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.item-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.item-form input {
+  flex: 1 1 260px;
+}
+.item-list {
+  display: grid;
+  gap: 10px;
+}
+.item-row, .appt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
+.item-row-main, .appt-main {
+  flex: 1;
+}
+.item-row-main strong, .appt-main strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.item-meta, .appt-meta {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.section-intro {
+  color: var(--muted);
+  margin-top: -8px;
+  margin-bottom: 16px;
+}
+.empty {
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+.small-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
