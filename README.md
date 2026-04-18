@@ -8,6 +8,7 @@ A simple shared Meteor app with three pages:
 
 
 
+
 ## Requirements
 
 - Meteor installed
