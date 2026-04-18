@@ -1,22 +1,33 @@
 import React, { useMemo, useState } from 'react';
-import { Meteor } from 'meteor/meteor';
 import { useTracker } from 'meteor/react-meteor-data';
-import {
-  Appointments,
-  GroceryItems,
-  WishlistItems,
-} from '/imports/api/collections';
+import { Meteor } from 'meteor/meteor';
+import { Appointments } from '../api/appointments';
+import { GroceryItems } from '../api/groceryItems';
+import { Wants } from '../api/wants';
 
-const tabs = ['Calendar', 'Grocery List', 'Wishlist'];
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const pages = {
+  calendar: 'Calendar',
+  groceries: 'Grocery List',
+  wants: 'Wants',
+};
 
-const formatMonthTitle = (date) =>
-  date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+const formatDateTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString([], {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
 
-const formatDateLabel = (dateString) => {
-  if (!dateString) return 'No date selected';
-  const date = new Date(`${dateString}T00:00`);
-  return date.toLocaleDateString(undefined, {
+const formatDateKey = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown Date';
+  return date.toLocaleDateString([], {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -24,367 +35,292 @@ const formatDateLabel = (dateString) => {
   });
 };
 
-const appointmentsForDate = (appointments, dateString) =>
-  appointments
-    .filter((appt) => appt.date === dateString)
-    .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-
-const buildCalendarCells = (monthDate) => {
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  const cells = [];
-
-  for (let i = first.getDay(); i > 0; i -= 1) {
-    cells.push(new Date(year, month, 1 - i));
-  }
-
-  for (let day = 1; day <= last.getDate(); day += 1) {
-    cells.push(new Date(year, month, day));
-  }
-
-  while (cells.length % 7 !== 0) {
-    const lastCell = cells[cells.length - 1];
-    cells.push(new Date(lastCell.getFullYear(), lastCell.getMonth(), lastCell.getDate() + 1));
-  }
-
-  return cells;
+const groupAppointmentsByDay = (appointments) => {
+  return appointments.reduce((groups, appointment) => {
+    const key = formatDateKey(appointment.startAt);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(appointment);
+    return groups;
+  }, {});
 };
 
-function CalendarPage({ appointments }) {
-  const [monthDate, setMonthDate] = useState(() => new Date());
-  const todayString = new Date().toISOString().slice(0, 10);
-  const [selectedDate, setSelectedDate] = useState(todayString);
-  const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ title: '', date: todayString, time: '', details: '' });
+function PageButton({ currentPage, pageKey, onClick }) {
+  return (
+    <button
+      className={`nav-button ${currentPage === pageKey ? 'active' : ''}`}
+      onClick={() => onClick(pageKey)}
+      type="button"
+    >
+      {pages[pageKey]}
+    </button>
+  );
+}
 
-  const cells = useMemo(() => buildCalendarCells(monthDate), [monthDate]);
-  const selectedAppointments = appointmentsForDate(appointments, selectedDate);
+function CalendarPage() {
+  const [title, setTitle] = useState('');
+  const [startAt, setStartAt] = useState('');
+  const [endAt, setEndAt] = useState('');
+  const [needsBabysitter, setNeedsBabysitter] = useState(false);
+  const [needsHomeBy, setNeedsHomeBy] = useState('');
+  const [notes, setNotes] = useState('');
 
-  const resetForm = (dateString = selectedDate) => {
-    setEditingId(null);
-    setForm({ title: '', date: dateString, time: '', details: '' });
-  };
+  const { appointments, isLoading } = useTracker(() => {
+    const handle = Meteor.subscribe('appointments');
+    return {
+      appointments: Appointments.find({}, { sort: { startAt: 1 } }).fetch(),
+      isLoading: !handle.ready(),
+    };
+  });
 
-  const submitAppointment = (e) => {
-    e.preventDefault();
-    const methodName = editingId ? 'appointments.update' : 'appointments.insert';
-    const args = editingId ? [editingId, form] : [form];
-    Meteor.call(methodName, ...args, (error) => {
-      if (error) {
-        alert(error.reason || 'Could not save appointment.');
-        return;
+  const groupedAppointments = useMemo(
+    () => groupAppointmentsByDay(appointments),
+    [appointments]
+  );
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    Meteor.call(
+      'appointments.insert',
+      {
+        title: title.trim(),
+        startAt,
+        endAt,
+        needsBabysitter,
+        needsHomeBy: needsHomeBy.trim(),
+        notes: notes.trim(),
+      },
+      (error) => {
+        if (error) {
+          alert(error.reason || 'Could not save appointment.');
+          return;
+        }
+        setTitle('');
+        setStartAt('');
+        setEndAt('');
+        setNeedsBabysitter(false);
+        setNeedsHomeBy('');
+        setNotes('');
       }
-      setSelectedDate(form.date);
-      resetForm(form.date);
-    });
+    );
   };
 
-  const startEdit = (appt) => {
-    setEditingId(appt._id);
-    setForm({
-      title: appt.title || '',
-      date: appt.date || selectedDate,
-      time: appt.time || '',
-      details: appt.details || '',
-    });
-  };
-
-  const removeAppointment = (id) => {
-    Meteor.call('appointments.remove', id);
-    if (editingId === id) resetForm();
-  };
-
-  const moveMonth = (direction) => {
-    const next = new Date(monthDate.getFullYear(), monthDate.getMonth() + direction, 1);
-    setMonthDate(next);
+  const removeAppointment = (appointmentId) => {
+    Meteor.call('appointments.remove', appointmentId);
   };
 
   return (
-    <div className="grid calendar-layout">
-      <section className="card">
-        <div className="calendar-topbar">
-          <div>
-            <h2>Calendar</h2>
-            <div className="section-intro">Add appointments so you both know what is coming up.</div>
-          </div>
-          <div className="month-controls">
-            <button onClick={() => moveMonth(-1)}>&larr;</button>
-            <strong>{formatMonthTitle(monthDate)}</strong>
-            <button onClick={() => moveMonth(1)}>&rarr;</button>
-          </div>
-        </div>
-
-        <div className="calendar-grid">
-          {dayNames.map((day) => (
-            <div key={day} className="day-name">{day}</div>
-          ))}
-
-          {cells.map((date) => {
-            const dateString = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-              .toISOString()
-              .slice(0, 10);
-            const dayAppointments = appointmentsForDate(appointments, dateString);
-            const isOutside = date.getMonth() !== monthDate.getMonth();
-            const isSelected = dateString === selectedDate;
-
-            return (
-              <button
-                type="button"
-                key={dateString}
-                className={`day-cell ${isOutside ? 'outside' : ''} ${isSelected ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedDate(dateString);
-                  setForm((prev) => ({ ...prev, date: dateString }));
-                }}
-              >
-                <div className="day-number">{date.getDate()}</div>
-                <div className="day-badges">
-                  {dayAppointments.slice(0, 3).map((appt) => (
-                    <div className="badge" key={appt._id}>
-                      {appt.time ? `${appt.time} ` : ''}{appt.title}
-                    </div>
-                  ))}
-                  {dayAppointments.length > 3 && (
-                    <div className="badge">+{dayAppointments.length - 3} more</div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="card">
-        <h2>{editingId ? 'Edit Appointment' : 'Add Appointment'}</h2>
-        <div className="section-intro">Selected day: {formatDateLabel(form.date || selectedDate)}</div>
-
-        <form className="form-grid" onSubmit={submitAppointment}>
+    <div className="page-grid">
+      <section className="card form-card">
+        <h2>Add Appointment</h2>
+        <form onSubmit={handleSubmit} className="form-stack">
           <label>
-            Title
+            Appointment
             <input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Pediatrician, date night, work event..."
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Doctor, dinner, recital, work event..."
+              required
             />
           </label>
 
           <label>
-            Date
+            Start
             <input
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              type="datetime-local"
+              value={startAt}
+              onChange={(e) => setStartAt(e.target.value)}
+              required
             />
           </label>
 
           <label>
-            Time
+            End / expected finish
             <input
-              type="time"
-              value={form.time}
-              onChange={(e) => setForm({ ...form, time: e.target.value })}
+              type="datetime-local"
+              value={endAt}
+              onChange={(e) => setEndAt(e.target.value)}
+            />
+          </label>
+
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={needsBabysitter}
+              onChange={(e) => setNeedsBabysitter(e.target.checked)}
+            />
+            Needs babysitter
+          </label>
+
+          <label>
+            Need me home by
+            <input
+              type="text"
+              value={needsHomeBy}
+              onChange={(e) => setNeedsHomeBy(e.target.value)}
+              placeholder="Example: 5:30 PM"
             />
           </label>
 
           <label>
             Notes
             <textarea
-              value={form.details}
-              onChange={(e) => setForm({ ...form, details: e.target.value })}
-              placeholder="Anything you want the other person to know."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows="4"
+              placeholder="Anything important to remember"
             />
           </label>
 
-          <div className="form-actions">
-            <button className="primary-btn" type="submit">
-              {editingId ? 'Save Changes' : 'Add Appointment'}
-            </button>
-            <button className="secondary-btn" type="button" onClick={() => resetForm(selectedDate)}>
-              Clear
-            </button>
-          </div>
+          <button type="submit" className="primary-button">Save Appointment</button>
         </form>
+      </section>
 
-        <h3 style={{ marginTop: 22 }}>Appointments for {formatDateLabel(selectedDate)}</h3>
-        {selectedAppointments.length === 0 ? (
-          <div className="empty">No appointments on this date yet.</div>
-        ) : (
-          <div className="item-list">
-            {selectedAppointments.map((appt) => (
-              <div className="appt-row" key={appt._id}>
-                <div className="appt-main">
-                  <strong>{appt.title}</strong>
-                  <div className="appt-meta">{appt.time || 'No time set'}</div>
-                  {appt.details ? <div className="appt-meta" style={{ marginTop: 6 }}>{appt.details}</div> : null}
+      <section className="card list-card">
+        <div className="section-header">
+          <h2>Upcoming</h2>
+          <span>{appointments.length} total</span>
+        </div>
+
+        {isLoading ? <p>Loading appointments...</p> : null}
+        {!isLoading && appointments.length === 0 ? (
+          <p>No appointments yet.</p>
+        ) : null}
+
+        {!isLoading && Object.entries(groupedAppointments).map(([day, items]) => (
+          <div key={day} className="day-group">
+            <h3>{day}</h3>
+            <div className="stack">
+              {items.map((appointment) => (
+                <div key={appointment._id} className="list-item appointment-item">
+                  <div>
+                    <strong>{appointment.title}</strong>
+                    <div className="muted">Start: {formatDateTime(appointment.startAt)}</div>
+                    {appointment.endAt ? <div className="muted">End: {formatDateTime(appointment.endAt)}</div> : null}
+                    {appointment.needsBabysitter ? <div className="pill">Babysitter needed</div> : null}
+                    {appointment.needsHomeBy ? <div className="muted">Need home by: {appointment.needsHomeBy}</div> : null}
+                    {appointment.notes ? <div className="notes">{appointment.notes}</div> : null}
+                  </div>
+                  <button type="button" className="delete-button" onClick={() => removeAppointment(appointment._id)}>
+                    Delete
+                  </button>
                 </div>
-                <div className="row-actions">
-                  <button className="secondary-btn" type="button" onClick={() => startEdit(appt)}>Edit</button>
-                  <button className="danger-btn" type="button" onClick={() => removeAppointment(appt._id)}>Delete</button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        )}
+        ))}
       </section>
     </div>
   );
 }
 
-function SimpleListPage({ title, description, items, methodPrefix }) {
-  const [input, setInput] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [editingText, setEditingText] = useState('');
+function SimpleListPage({ title, subtitle, methodName, removeMethodName, collectionName }) {
+  const [text, setText] = useState('');
 
-  const addItem = (e) => {
-    e.preventDefault();
-    Meteor.call(`${methodPrefix}.insert`, input, (error) => {
-      if (error) {
-        alert(error.reason || 'Could not save item.');
-        return;
-      }
-      setInput('');
-    });
-  };
-
-  const saveEdit = (id) => {
-    Meteor.call(`${methodPrefix}.update`, id, editingText, (error) => {
-      if (error) {
-        alert(error.reason || 'Could not update item.');
-        return;
-      }
-      setEditingId(null);
-      setEditingText('');
-    });
-  };
-
-  return (
-    <section className="card">
-      <h2>{title}</h2>
-      <div className="section-intro">{description}</div>
-
-      <form className="item-form" onSubmit={addItem}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={`Add to ${title.toLowerCase()}...`}
-        />
-        <button className="primary-btn" type="submit">Add</button>
-      </form>
-
-      {items.length === 0 ? (
-        <div className="empty">Nothing here yet.</div>
-      ) : (
-        <div className="item-list">
-          {items.map((item) => (
-            <div className="item-row" key={item._id}>
-              <div className="item-row-main">
-                {editingId === item._id ? (
-                  <>
-                    <input
-                      value={editingText}
-                      onChange={(e) => setEditingText(e.target.value)}
-                    />
-                    <div className="small-note" style={{ marginTop: 8 }}>Press save to update this item.</div>
-                  </>
-                ) : (
-                  <strong>{item.text}</strong>
-                )}
-              </div>
-              <div className="row-actions">
-                {editingId === item._id ? (
-                  <>
-                    <button className="primary-btn" type="button" onClick={() => saveEdit(item._id)}>Save</button>
-                    <button className="secondary-btn" type="button" onClick={() => setEditingId(null)}>Cancel</button>
-                  </>
-                ) : (
-                  <button
-                    className="secondary-btn"
-                    type="button"
-                    onClick={() => {
-                      setEditingId(item._id);
-                      setEditingText(item.text);
-                    }}
-                  >
-                    Edit
-                  </button>
-                )}
-                <button
-                  className="danger-btn"
-                  type="button"
-                  onClick={() => Meteor.call(`${methodPrefix}.remove`, item._id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-export function App() {
-  const [activeTab, setActiveTab] = useState('Calendar');
-
-  const { isLoading, appointments, groceryItems, wishlistItems } = useTracker(() => {
-    const appointmentsSub = Meteor.subscribe('appointments');
-    const grocerySub = Meteor.subscribe('groceryItems');
-    const wishlistSub = Meteor.subscribe('wishlistItems');
-
+  const { items, isLoading } = useTracker(() => {
+    const handle = Meteor.subscribe(collectionName);
+    const collection = collectionName === 'groceryItems' ? GroceryItems : Wants;
     return {
-      isLoading: !appointmentsSub.ready() || !grocerySub.ready() || !wishlistSub.ready(),
-      appointments: Appointments.find({}, { sort: { startDate: 1, createdAt: 1 } }).fetch(),
-      groceryItems: GroceryItems.find({}, { sort: { createdAt: -1 } }).fetch(),
-      wishlistItems: WishlistItems.find({}, { sort: { createdAt: -1 } }).fetch(),
+      items: collection.find({}, { sort: { createdAt: -1 } }).fetch(),
+      isLoading: !handle.ready(),
     };
   });
 
-  return (
-    <div className="app-shell">
-      <header className="header">
-        <div className="title-wrap">
-          <h1>Family Planner</h1>
-          <p>Shared calendar, grocery list, and wishlist for your household.</p>
-        </div>
-        <nav className="nav">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              className={activeTab === tab ? 'active' : ''}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </nav>
-      </header>
+  const addItem = (event) => {
+    event.preventDefault();
+    Meteor.call(methodName, text, (error) => {
+      if (error) {
+        alert(error.reason || 'Could not add item.');
+        return;
+      }
+      setText('');
+    });
+  };
 
-      {isLoading ? (
-        <section className="card">Loading...</section>
-      ) : (
-        <>
-          {activeTab === 'Calendar' && <CalendarPage appointments={appointments} />}
-          {activeTab === 'Grocery List' && (
-            <SimpleListPage
-              title="Grocery List"
-              description="Add, edit, or remove grocery items as needed."
-              items={groceryItems}
-              methodPrefix="grocery"
-            />
-          )}
-          {activeTab === 'Wishlist' && (
-            <SimpleListPage
-              title="Wishlist"
-              description="Keep track of things you both want to buy eventually."
-              items={wishlistItems}
-              methodPrefix="wishlist"
-            />
-          )}
-        </>
-      )}
+  const removeItem = (itemId) => {
+    Meteor.call(removeMethodName, itemId);
+  };
+
+  return (
+    <div className="page-grid single-column">
+      <section className="card form-card">
+        <h2>{title}</h2>
+        <p className="muted intro">{subtitle}</p>
+        <form onSubmit={addItem} className="inline-form">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={`Add to ${title.toLowerCase()}`}
+            required
+          />
+          <button type="submit" className="primary-button">Add</button>
+        </form>
+      </section>
+
+      <section className="card list-card">
+        <div className="section-header">
+          <h2>{title}</h2>
+          <span>{items.length} items</span>
+        </div>
+
+        {isLoading ? <p>Loading...</p> : null}
+        {!isLoading && items.length === 0 ? <p>Nothing here yet.</p> : null}
+
+        <div className="stack">
+          {items.map((item) => (
+            <div key={item._id} className="list-item simple-item">
+              <span>{item.text}</span>
+              <button type="button" className="delete-button" onClick={() => removeItem(item._id)}>
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
+
+export const App = () => {
+  const [page, setPage] = useState('calendar');
+
+  return (
+    <div className="app-shell">
+      <header className="app-header">
+        <div>
+          <h1>Family Planner</h1>
+          <p>Shared calendar, groceries, and future wants.</p>
+        </div>
+        <nav className="nav-row">
+          <PageButton currentPage={page} pageKey="calendar" onClick={setPage} />
+          <PageButton currentPage={page} pageKey="groceries" onClick={setPage} />
+          <PageButton currentPage={page} pageKey="wants" onClick={setPage} />
+        </nav>
+      </header>
+
+      <main>
+        {page === 'calendar' ? <CalendarPage /> : null}
+        {page === 'groceries' ? (
+          <SimpleListPage
+            title="Grocery List"
+            subtitle="Add things either of you need from the store."
+            methodName="groceryItems.insert"
+            removeMethodName="groceryItems.remove"
+            collectionName="groceryItems"
+          />
+        ) : null}
+        {page === 'wants' ? (
+          <SimpleListPage
+            title="Wants"
+            subtitle="Keep track of things you’d both like to buy eventually."
+            methodName="wants.insert"
+            removeMethodName="wants.remove"
+            collectionName="wants"
+          />
+        ) : null}
+      </main>
+    </div>
+  );
+};
