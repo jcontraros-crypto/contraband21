@@ -5,8 +5,11 @@ reactive-var
 tracker
 standard-minifier-css
 standard-minifier-js
+es5-shim
 ecmascript
+typescript
 shell-server
+autopublish
+insecure
 react-meteor-data
-static-html
-hot-module-replacement
+check

@@ -2,35 +2,35 @@ import { Mongo } from 'meteor/mongo';
 import { Meteor } from 'meteor/meteor';
 import { check } from 'meteor/check';
 
-export const GroceryItems = new Mongo.Collection('groceryItems');
+export const WishlistItems = new Mongo.Collection('wishlistItems');
 
 if (Meteor.isServer) {
-  Meteor.publish('groceryItems', function publishGroceryItems() {
-    return GroceryItems.find({}, { sort: { createdAt: -1 } });
+  Meteor.publish('wishlistItems', function publishWishlistItems() {
+    return WishlistItems.find({}, { sort: { createdAt: -1 } });
   });
 }
 
 Meteor.methods({
-  async 'groceryItems.insert'(doc) {
+  async 'wishlistItems.insert'(doc) {
     check(doc, {
       name: String,
       notes: String,
     });
 
-    await GroceryItems.insertAsync({
+    await WishlistItems.insertAsync({
       ...doc,
       createdAt: new Date(),
     });
   },
 
-  async 'groceryItems.update'(itemId, doc) {
+  async 'wishlistItems.update'(itemId, doc) {
     check(itemId, String);
     check(doc, {
       name: String,
       notes: String,
     });
 
-    await GroceryItems.updateAsync(itemId, {
+    await WishlistItems.updateAsync(itemId, {
       $set: {
         ...doc,
         updatedAt: new Date(),
@@ -38,8 +38,8 @@ Meteor.methods({
     });
   },
 
-  async 'groceryItems.remove'(itemId) {
+  async 'wishlistItems.remove'(itemId) {
     check(itemId, String);
-    await GroceryItems.removeAsync(itemId);
+    await WishlistItems.removeAsync(itemId);
   },
 });

@@ -1,3 +1,3 @@
 import '../imports/api/appointments';
 import '../imports/api/groceryItems';
-import '../imports/api/wants';
+import '../imports/api/wishlistItems';

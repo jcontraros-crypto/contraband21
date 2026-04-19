@@ -6,26 +6,48 @@ export const Appointments = new Mongo.Collection('appointments');
 
 if (Meteor.isServer) {
   Meteor.publish('appointments', function publishAppointments() {
-    return Appointments.find({}, { sort: { startAt: 1 } });
+    return Appointments.find({}, { sort: { date: 1, startTime: 1, createdAt: 1 } });
   });
 }
 
 Meteor.methods({
-  async 'appointments.insert'(appointment) {
-    check(appointment, {
+  async 'appointments.insert'(doc) {
+    check(doc, {
       title: String,
-      startAt: String,
-      endAt: String,
+      date: String,
+      startTime: String,
+      endTime: String,
       needsBabysitter: Boolean,
       needsHomeBy: String,
       notes: String,
     });
 
     await Appointments.insertAsync({
-      ...appointment,
+      ...doc,
       createdAt: new Date(),
     });
   },
+
+  async 'appointments.update'(appointmentId, doc) {
+    check(appointmentId, String);
+    check(doc, {
+      title: String,
+      date: String,
+      startTime: String,
+      endTime: String,
+      needsBabysitter: Boolean,
+      needsHomeBy: String,
+      notes: String,
+    });
+
+    await Appointments.updateAsync(appointmentId, {
+      $set: {
+        ...doc,
+        updatedAt: new Date(),
+      },
+    });
+  },
+
   async 'appointments.remove'(appointmentId) {
     check(appointmentId, String);
     await Appointments.removeAsync(appointmentId);
