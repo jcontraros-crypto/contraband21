@@ -10,36 +10,39 @@ if (Meteor.isServer) {
   });
 }
 
-Meteor.methods({
-  async 'groceryItems.insert'(doc) {
-    check(doc, {
-      name: String,
-      notes: String,
-    });
-
-    await GroceryItems.insertAsync({
-      ...doc,
-      createdAt: new Date(),
-    });
-  },
-
-  async 'groceryItems.update'(itemId, doc) {
-    check(itemId, String);
-    check(doc, {
-      name: String,
-      notes: String,
-    });
-
-    await GroceryItems.updateAsync(itemId, {
-      $set: {
+if (Meteor.isServer) {
+  Meteor.methods({
+    async 'groceryItems.insert'(doc) {
+      check(doc, {
+        name: String,
+        notes: String,
+      });
+  
+      await GroceryItems.insertAsync({
         ...doc,
-        updatedAt: new Date(),
-      },
-    });
-  },
+        createdAt: new Date(),
+      });
+    },
+  
+    async 'groceryItems.update'(itemId, doc) {
+      check(itemId, String);
+      check(doc, {
+        name: String,
+        notes: String,
+      });
+  
+      await GroceryItems.updateAsync(itemId, {
+        $set: {
+          ...doc,
+          updatedAt: new Date(),
+        },
+      });
+    },
+  
+    async 'groceryItems.remove'(itemId) {
+      check(itemId, String);
+      await GroceryItems.removeAsync(itemId);
+    },
+  });
+}
 
-  async 'groceryItems.remove'(itemId) {
-    check(itemId, String);
-    await GroceryItems.removeAsync(itemId);
-  },
-});

@@ -10,36 +10,39 @@ if (Meteor.isServer) {
   });
 }
 
-Meteor.methods({
-  async 'wishlistItems.insert'(doc) {
-    check(doc, {
-      name: String,
-      notes: String,
-    });
-
-    await WishlistItems.insertAsync({
-      ...doc,
-      createdAt: new Date(),
-    });
-  },
-
-  async 'wishlistItems.update'(itemId, doc) {
-    check(itemId, String);
-    check(doc, {
-      name: String,
-      notes: String,
-    });
-
-    await WishlistItems.updateAsync(itemId, {
-      $set: {
+if (Meteor.isServer) {
+  Meteor.methods({
+    async 'wishlistItems.insert'(doc) {
+      check(doc, {
+        name: String,
+        notes: String,
+      });
+  
+      await WishlistItems.insertAsync({
         ...doc,
-        updatedAt: new Date(),
-      },
-    });
-  },
+        createdAt: new Date(),
+      });
+    },
+  
+    async 'wishlistItems.update'(itemId, doc) {
+      check(itemId, String);
+      check(doc, {
+        name: String,
+        notes: String,
+      });
+  
+      await WishlistItems.updateAsync(itemId, {
+        $set: {
+          ...doc,
+          updatedAt: new Date(),
+        },
+      });
+    },
+  
+    async 'wishlistItems.remove'(itemId) {
+      check(itemId, String);
+      await WishlistItems.removeAsync(itemId);
+    },
+  });
+}
 
-  async 'wishlistItems.remove'(itemId) {
-    check(itemId, String);
-    await WishlistItems.removeAsync(itemId);
-  },
-});

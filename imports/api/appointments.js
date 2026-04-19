@@ -10,46 +10,49 @@ if (Meteor.isServer) {
   });
 }
 
-Meteor.methods({
-  async 'appointments.insert'(doc) {
-    check(doc, {
-      title: String,
-      date: String,
-      startTime: String,
-      endTime: String,
-      needsBabysitter: Boolean,
-      needsHomeBy: String,
-      notes: String,
-    });
-
-    await Appointments.insertAsync({
-      ...doc,
-      createdAt: new Date(),
-    });
-  },
-
-  async 'appointments.update'(appointmentId, doc) {
-    check(appointmentId, String);
-    check(doc, {
-      title: String,
-      date: String,
-      startTime: String,
-      endTime: String,
-      needsBabysitter: Boolean,
-      needsHomeBy: String,
-      notes: String,
-    });
-
-    await Appointments.updateAsync(appointmentId, {
-      $set: {
+if (Meteor.isServer) {
+  Meteor.methods({
+    async 'appointments.insert'(doc) {
+      check(doc, {
+        title: String,
+        date: String,
+        startTime: String,
+        endTime: String,
+        needsBabysitter: Boolean,
+        needsHomeBy: String,
+        notes: String,
+      });
+  
+      await Appointments.insertAsync({
         ...doc,
-        updatedAt: new Date(),
-      },
-    });
-  },
+        createdAt: new Date(),
+      });
+    },
+  
+    async 'appointments.update'(appointmentId, doc) {
+      check(appointmentId, String);
+      check(doc, {
+        title: String,
+        date: String,
+        startTime: String,
+        endTime: String,
+        needsBabysitter: Boolean,
+        needsHomeBy: String,
+        notes: String,
+      });
+  
+      await Appointments.updateAsync(appointmentId, {
+        $set: {
+          ...doc,
+          updatedAt: new Date(),
+        },
+      });
+    },
+  
+    async 'appointments.remove'(appointmentId) {
+      check(appointmentId, String);
+      await Appointments.removeAsync(appointmentId);
+    },
+  });
+}
 
-  async 'appointments.remove'(appointmentId) {
-    check(appointmentId, String);
-    await Appointments.removeAsync(appointmentId);
-  },
-});
