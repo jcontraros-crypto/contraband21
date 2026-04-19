@@ -148,3 +148,12 @@ button, input, textarea, select {
   align-items: center;
   gap: 8px;
 }
+
+.error-box {
+  white-space: pre-wrap;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 12px;
+  color: #991b1b;
+}
